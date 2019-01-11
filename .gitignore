@@ -1,0 +1,13 @@
+# .gitignore for maven 
+target/
+
+# logs
+/stacktrace.log
+/test/reports
+/logs
+*.log
+*.log.*
+
+# idea
+.idea
+*.iml
