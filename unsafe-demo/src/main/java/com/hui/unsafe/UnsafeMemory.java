@@ -31,7 +31,7 @@ public class UnsafeMemory
 
     private static final int EXP = 24;
 
-    private static final long BLOCK_MEM_SIZE = 1 << EXP;// 2^24 bits
+    private static final long BLOCK_MEM_SIZE = 1 << EXP;// 2^24 bits, max memory size of block = 2^24 byte
 
     private long baseAddress;
 
@@ -129,6 +129,11 @@ public class UnsafeMemory
         this.capicity = capicity;
     }
 
+    /**
+     * get real address from blocks by relative address
+     * @param address relative address
+     * @return real address
+     */
     private long getRealAddress(long address)
     {
         if (address < baseAddress)
@@ -146,6 +151,12 @@ public class UnsafeMemory
         return blockAddress[block] + blockPos;
     }
 
+    /**
+     * get real address from blocks by relative address and check if need to reallocate
+     * @param address
+     * @param typeSize
+     * @return
+     */
     private long getAndCheckRealAddress(long address, long typeSize)
     {
         if (address < baseAddress)
@@ -237,7 +248,6 @@ public class UnsafeMemory
 
     public byte[] getBytes(long address, int length)
     {
-        // 跨块问题
         byte[] bytes = new byte[length];
         long size = length * BYTE_ARRAY_INDEX_SCALE;
 
@@ -256,14 +266,14 @@ public class UnsafeMemory
         int endBlock = (int) ((endPos - baseAddress) >> EXP);
         long endBlockPos = (endPos - baseAddress) & (BLOCK_MEM_SIZE - 1);
 
-        // 不跨块
+        // not crossing blocks
         if (beginBlock == endBlock)
         {
             UNSAFE.copyMemory(null, beginReadAddress, bytes, BYTE_ARRAY_BASE_OFFSET, size);
             return bytes;
         }
 
-        // 跨块
+        // crossing blocks
         long sz = BLOCK_MEM_SIZE - beginBlockPos;
         UNSAFE.copyMemory(null, beginReadAddress, bytes, BYTE_ARRAY_BASE_OFFSET, sz);
         for (int i = beginBlock + 1; i < endBlock; i++)
@@ -289,7 +299,7 @@ public class UnsafeMemory
         {
             throw new IllegalArgumentException("illegal address");
         }
-
+        // make sure memory is enough
         getAndCheckRealAddress(address, size);
 
         int beginBlock = (int) ((address - baseAddress) >> EXP);
@@ -299,14 +309,14 @@ public class UnsafeMemory
         int endBlock = (int) ((endPos - baseAddress) >> EXP);
         long endBlockPos = (endPos - baseAddress) & (BLOCK_MEM_SIZE - 1);
 
-        // 不跨块
+        // not crossing blocks
         if (beginBlock == endBlock)
         {
             UNSAFE.copyMemory(bytes, BYTE_ARRAY_BASE_OFFSET, null, beginReadAddress, size);
             return;
         }
 
-        // 跨块
+        // crossing blocks
         long sz = BLOCK_MEM_SIZE - beginBlockPos;
         UNSAFE.copyMemory(bytes, BYTE_ARRAY_BASE_OFFSET, null, beginReadAddress, sz);
         for (int i = beginBlock + 1; i < endBlock; i++)
@@ -318,42 +328,5 @@ public class UnsafeMemory
         {
             UNSAFE.copyMemory(bytes, BYTE_ARRAY_BASE_OFFSET + sz, null, blockAddress[endBlock], endBlockPos);
         }
-    }
-
-    private static long getObjectAddress(Object object)
-    {
-        Object[] array = new Object[]{object};
-        long baseOffset = UNSAFE.arrayBaseOffset(Object[].class);
-        int addressSize = UNSAFE.addressSize();
-
-        long location;
-        switch (addressSize)
-        {
-            case 4:
-                location = UNSAFE.getInt(array, baseOffset);
-                break;
-            case 8:
-                location = UNSAFE.getLong(array, baseOffset);
-                break;
-            default:
-                throw new IllegalArgumentException("Unsupport Object class type");
-        }
-
-        return location;
-    }
-
-    public static void main(String[] args) throws Exception
-    {
-        System.out.println(BYTE_ARRAY_BASE_OFFSET);
-        System.out.println(BYTE_ARRAY_INDEX_SCALE);
-        String hello = "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-        byte[] bytes = hello.getBytes(Charset.forName("UTF-8"));
-        long bytesAddress = getObjectAddress(bytes);
-        byte[] beginByteBlock = new byte[bytes.length];
-        long resultAddress = getObjectAddress(beginByteBlock);
-        System.out.println(UNSAFE.getByte(bytesAddress));
-        UNSAFE.copyMemory(null, bytesAddress, beginByteBlock, 0L, bytes.length+16);
-        String result = new String(beginByteBlock, "UTF-8");
-        System.out.println(result);
     }
 }
