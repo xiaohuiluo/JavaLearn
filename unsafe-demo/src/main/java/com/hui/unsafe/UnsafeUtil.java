@@ -255,29 +255,20 @@ public class UnsafeUtil
         return (location);
     }
 
-    private static Cloner fromAddress(long addr)
+    private static Cloner ObjectOf(long addr)
     {
         Cloner[] array = new Cloner[]{null};
         long baseOffset = UNSAFE.arrayBaseOffset(Cloner[].class);
         UNSAFE.putLong(array, baseOffset, addr);
-        UNSAFE.freeMemory(addr);
         return array[0];
     }
 
 
-//    public static Cloner shallowCopy(Object object)
-//    {
-//        long size = sizeOf(object);
-//        long srcAddress = addressOf(object);
-////        long address = UNSAFE.allocateMemory(size);
-////        UNSAFE.copyMemory(start, address, size);
-//
-//        Cloner cloner = new Cloner();
-//        long tarAddress = addressOf(cloner);
-//        UNSAFE.copyMemory(srcAddress, tarAddress, size);
-//        return cloner;
-//        return fromAddress(address);
-//    }
+    public static Cloner shallowCopy(Object object)
+    {
+        long srcAddress = addressOf(object);
+        return ObjectOf(srcAddress);
+    }
 
     public static Cloner deepCopy(Object object)
     {
@@ -289,9 +280,9 @@ public class UnsafeUtil
         UNSAFE.copyMemory(srcAddress, tarAddress, size);
         return cloner;
     }
-
-    public static void testShallowCopy()
+    public static void testDeepCopy()
     {
+        System.out.println("------- deep copy -------");
         Cloner cloner = new Cloner(123, 20);
         System.out.println("src cloner: " + cloner);
         Cloner cloner1 = deepCopy(cloner);
@@ -300,13 +291,29 @@ public class UnsafeUtil
         cloner1.setAge(30);
         System.out.println("after set src cloner: " +cloner);
         System.out.println("after set dest cloner: " +cloner1);
+        System.out.println("------- deep copy -------");
 
-//        System.out.println(cloner1.getId() + ":" + cloner1.getAge());
+    }
+
+    public static void testShallowCopy()
+    {
+        System.out.println("------- shallow copy -------");
+        Cloner cloner = new Cloner(123, 20);
+        System.out.println("src cloner: " + cloner);
+        Cloner cloner1 = shallowCopy(cloner);
+        System.out.println("dest cloner: " +cloner1);
+        cloner1.setId(234);
+        cloner1.setAge(30);
+        System.out.println("after set src cloner: " +cloner);
+        System.out.println("after set dest cloner: " +cloner1);
+        System.out.println("------- shallow copy -------");
+
     }
 
     public static void main(String[] args)
     {
         testShallowCopy();
+        testDeepCopy();
         testAtomicCounter();
         testParkUnpark();
     }
